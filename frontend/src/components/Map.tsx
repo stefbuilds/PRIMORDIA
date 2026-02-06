@@ -24,7 +24,7 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
 
   // Map styles
   const STYLES = {
-    globe: 'mapbox://styles/mapbox/standard', // Colored 3D globe
+    globe: 'mapbox://styles/mapbox/dark-v11', // Dark style for globe
     detailed: 'mapbox://styles/mapbox/satellite-streets-v12', // Satellite imagery
   };
 

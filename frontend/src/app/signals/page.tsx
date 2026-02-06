@@ -29,7 +29,6 @@ export default function SignalsPage() {
   const [showNewsPopup, setShowNewsPopup] = useState(false);
   const [selectedHeadline, setSelectedHeadline] = useState<Headline | null>(null);
   const [showChat, setShowChat] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   const [showChartModal, setShowChartModal] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState<string>('FXI');
   const [marketSymbols, setMarketSymbols] = useState<MarketSymbol[]>([]);
@@ -55,13 +54,6 @@ export default function SignalsPage() {
     localStorage.setItem('primordia-theme', newTheme);
   };
 
-  // Show welcome modal on first visit
-  useEffect(() => {
-    const hasVisited = localStorage.getItem('global-pulse-visited');
-    if (!hasVisited) {
-      setShowWelcome(true);
-    }
-  }, []);
 
   // Close settings dropdown on click outside
   useEffect(() => {
@@ -517,15 +509,6 @@ export default function SignalsPage() {
         onClose={() => setShowChat(false)}
       />
 
-      {/* Welcome Modal */}
-      {showWelcome && (
-        <WelcomeModal 
-          onClose={() => {
-            setShowWelcome(false);
-            localStorage.setItem('global-pulse-visited', 'true');
-          }}
-        />
-      )}
     </div>
     </EntryMotion>
   );
@@ -1512,212 +1495,6 @@ function SentimentBar({ sentiment }: { sentiment: number }) {
         }`}
         style={{ height: `${Math.abs(sentiment) * 100}%` }}
       />
-    </div>
-  );
-}
-
-function CreatorBioModal({ onContinue, onTutorial }: { onContinue: () => void; onTutorial: () => void }) {
-  const [expanded, setExpanded] = useState(false);
-  
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70" onClick={onContinue} />
-      <div className="relative w-full max-w-sm bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden">
-        <div className="p-6">
-          {/* Header badge */}
-          <div className="flex justify-center mb-5">
-            <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-medium">Meet the Creator</span>
-          </div>
-          
-          {/* Profile Picture */}
-          <div className="flex justify-center mb-4">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 p-[2px]">
-              <div className="w-full h-full rounded-full bg-neutral-900 overflow-hidden">
-                {/* 
-                  ADD YOUR PHOTO HERE:
-                  Save your image to: frontend/public/creator.jpg 
-                */}
-                <img 
-                  src="/creator.jpg" 
-                  alt="Creator" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    if (e.currentTarget.nextElementSibling) {
-                      (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
-                    }
-                  }}
-                />
-                <div className="w-full h-full items-center justify-center text-3xl font-bold text-neutral-600 hidden">
-                  A
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Name & Title */}
-          <div className="text-center mb-5">
-            <h3 className="text-xl font-semibold text-white">Alex</h3>
-            <div className="flex items-center justify-center gap-2 mt-1">
-              <span className="text-xs text-neutral-500">Creator & Developer</span>
-              <span className="w-1 h-1 rounded-full bg-neutral-700" />
-              <span className="text-xs text-neutral-600">High School Student</span>
-            </div>
-          </div>
-          
-          {/* Interest Tags */}
-          <div className="flex flex-wrap justify-center gap-1.5 mb-5">
-            {['Economics', 'Markets', 'Data Science', 'Geopolitics'].map((tag) => (
-              <span 
-                key={tag}
-                className="px-2.5 py-1 text-[10px] font-medium bg-neutral-900 text-neutral-400 rounded-full border border-neutral-800"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-          
-          {/* Bio - Always visible */}
-          <div className="bg-neutral-900/50 rounded-xl p-4 border border-neutral-800/50">
-            <p className="text-sm text-neutral-300 leading-relaxed">
-              I built Primordia because I noticed a pattern: <span className="text-white">headlines often tell a different story than reality</span>. Satellite data doesn't lie—night lights and shipping activity reveal economic truth before markets catch up.
-            </p>
-            
-            {/* Expandable section */}
-            <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-96 mt-3 pt-3 border-t border-neutral-800' : 'max-h-0'}`}>
-              <div className="space-y-3 text-sm text-neutral-400 leading-relaxed">
-                <p>
-                  <span className="text-neutral-300 font-medium">The Problem:</span> Information asymmetry gives institutional investors an unfair advantage. They have access to alternative data—satellite imagery, shipping logs, industrial metrics—while retail investors rely on lagging news.
-                </p>
-                <p>
-                  <span className="text-neutral-300 font-medium">The Solution:</span> Primordia democratizes this intelligence. By combining NASA satellite data, real-time news sentiment, and market signals, anyone can now spot divergence between narrative and reality.
-                </p>
-                <p>
-                  <span className="text-neutral-300 font-medium">The Vision:</span> A world where ground truth is accessible to everyone—not just hedge funds with million-dollar data subscriptions.
-                </p>
-              </div>
-            </div>
-            
-            {/* Expand/Collapse button */}
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1.5 mt-3 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
-            >
-              <svg 
-                width="12" 
-                height="12" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2"
-                className={`transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-              {expanded ? 'Show less' : 'Read more about the mission'}
-            </button>
-          </div>
-          
-          {/* Action buttons */}
-          <div className="flex gap-2 mt-5">
-            <button
-              onClick={onTutorial}
-              className="flex-1 py-2.5 text-sm bg-neutral-900 text-neutral-300 rounded-lg hover:bg-neutral-800 hover:text-white transition-colors border border-neutral-800"
-            >
-              How it works
-            </button>
-            <button
-              onClick={onContinue}
-              className="flex-1 py-2.5 text-sm bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WelcomeModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<'welcome' | 'creator' | 'tutorial'>('welcome');
-
-  // Tutorial view
-  if (step === 'tutorial') {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-        <div className="relative w-full max-w-md bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-xs text-neutral-500 uppercase tracking-wider font-medium">Quick Start</span>
-              <button
-                onClick={() => setStep('creator')}
-                className="text-neutral-500 hover:text-white transition-colors text-xs"
-              >
-                Back
-              </button>
-            </div>
-            
-            <div className="space-y-4 text-sm">
-              <div className="flex gap-3">
-                <span className="text-neutral-600 font-mono text-xs mt-0.5">01</span>
-                <p className="text-neutral-300"><span className="text-white">Select a region</span> from the dropdown or click on the map</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-neutral-600 font-mono text-xs mt-0.5">02</span>
-                <p className="text-neutral-300"><span className="text-white">Divergence Index</span> shows gaps between satellite data and news narrative</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-neutral-600 font-mono text-xs mt-0.5">03</span>
-                <p className="text-neutral-300"><span className="text-white">Right panel</span> contains signals, headlines, and AI analysis</p>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-neutral-600 font-mono text-xs mt-0.5">04</span>
-                <p className="text-neutral-300"><span className="text-white">Chat assistant</span> available via button in bottom-right</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={onClose}
-              className="mt-6 w-full py-2.5 text-sm bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-            >
-              Start Exploring
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Creator bio view
-  if (step === 'creator') {
-    return <CreatorBioModal onContinue={onClose} onTutorial={() => setStep('tutorial')} />;
-  }
-
-  // Initial welcome view
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden">
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-white" />
-            <span className="text-xs text-neutral-500 uppercase tracking-wider font-medium">Primordia</span>
-          </div>
-          
-          <p className="text-sm text-neutral-400 leading-relaxed mb-6">
-            Intelligence terminal analyzing satellite imagery, news sentiment, and market data to detect divergence signals.
-          </p>
-          
-          <button
-            onClick={() => setStep('creator')}
-            className="w-full py-2.5 text-sm bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-          >
-            Continue
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Region, SignalsResponse, Headline, MarketSymbol, GeospatialData, PhysicalFusion, SpatialStats } from '@/types';
+import { Region, SignalsResponse, Headline, MarketSymbol } from '@/types';
 import ChatBox from '@/components/ChatBox';
 import { MarketSymbols, REGION_MARKET_SYMBOLS } from '@/components/MarketSymbols';
 import { TradingViewChart, TradingViewTickerTape } from '@/components/TradingViewChart';
@@ -38,7 +38,6 @@ export default function SignalsPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<'satellite' | 'globe'>('satellite');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [showAnomalyOverlay, setShowAnomalyOverlay] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
 
   // Load theme from localStorage
@@ -403,14 +402,7 @@ export default function SignalsPage() {
             
             {showMapPanel && (
               <>
-                <Map 
-                  selectedRegion={selectedRegion} 
-                  onRegionSelect={setSelectedRegion} 
-                  regions={regions} 
-                  mapStyle={mapStyle}
-                  overlay={signals?.geospatial?.overlay}
-                  showOverlay={showAnomalyOverlay}
-                />
+                <Map selectedRegion={selectedRegion} onRegionSelect={setSelectedRegion} regions={regions} mapStyle={mapStyle} />
                 
                 {/* Region Selector */}
                 <div className="absolute top-14 left-4 z-10">
@@ -428,30 +420,6 @@ export default function SignalsPage() {
                     ))}
                   </select>
                 </div>
-
-                {/* Anomaly Overlay Toggle */}
-                {signals?.geospatial && (
-                  <div className="absolute top-14 right-4 z-10">
-                    <button
-                      onClick={() => setShowAnomalyOverlay(!showAnomalyOverlay)}
-                      className={`glass rounded-xl px-3 py-2 text-xs font-medium transition-all flex items-center gap-2 ${
-                        showAnomalyOverlay 
-                          ? 'bg-white/20 text-white ring-1 ring-white/30' 
-                          : 'text-neutral-400 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <path d="M21 15l-5-5L5 21" />
-                      </svg>
-                      Anomaly Layer
-                      {signals.geospatial.is_simulated && (
-                        <span className="text-[9px] px-1 py-0.5 bg-amber-500/20 text-amber-400 rounded">SIM</span>
-                      )}
-                    </button>
-                  </div>
-                )}
 
                 {/* Loading */}
                 {loading && (
@@ -583,49 +551,6 @@ function StatusBadge({ mode }: { mode: string }) {
   );
 }
 
-// Timestamp component for official feel
-function DataTimestamp({ timestamp, label = "LAST UPDATED" }: { timestamp: string; label?: string }) {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const ageMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-  const isStale = ageMinutes > 30;
-  
-  return (
-    <div className="flex items-center gap-2 font-mono text-[9px] text-neutral-600">
-      <span className="uppercase tracking-wider">{label}:</span>
-      <span className="text-neutral-400">{date.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
-      <span className={`px-1 py-0.5 rounded text-[8px] ${isStale ? 'bg-amber-900/30 text-amber-500' : 'bg-neutral-800 text-neutral-500'}`}>
-        {ageMinutes < 1 ? 'LIVE' : `${ageMinutes}M AGO`}
-      </span>
-    </div>
-  );
-}
-
-// Card header with timestamp
-function CardHeader({ title, timestamp, icon, badge }: { 
-  title: string; 
-  timestamp?: string;
-  icon?: React.ReactNode;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {icon}
-          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">{title}</span>
-        </div>
-        {badge}
-      </div>
-      {timestamp && (
-        <div className="mt-1.5">
-          <DataTimestamp timestamp={timestamp} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AnalysisPanel({ signals, region, onShowNews, onSelectHeadline, marketSymbols, onOpenChart }: { 
   signals: SignalsResponse; 
   region: Region;
@@ -641,33 +566,18 @@ function AnalysisPanel({ signals, region, onShowNews, onSelectHeadline, marketSy
       {/* Region Info */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-semibold font-mono tracking-tight">{region.name.toUpperCase()}</h2>
+          <h2 className="text-lg font-semibold">{region.name}</h2>
           <p className="text-xs text-neutral-500 mt-0.5">{region.description}</p>
-          <DataTimestamp timestamp={signals.timestamp} label="DATA TIMESTAMP" />
         </div>
-        <span className="text-[10px] font-semibold text-neutral-500 bg-neutral-900 px-2 py-1 rounded font-mono uppercase tracking-wider">
+        <span className="text-[10px] font-semibold text-neutral-500 bg-neutral-900 px-2 py-1 rounded-md uppercase tracking-wider">
           {region.category}
         </span>
       </div>
 
       {/* Divergence Score */}
       <div id="section-divergence">
-        <DivergenceCard score={signals.divergence_score} timestamp={signals.timestamp} />
+        <DivergenceCard score={signals.divergence_score} />
       </div>
-
-      {/* Physical Fusion Card - NEW */}
-      {signals.geospatial && (
-        <div id="section-fusion">
-          <PhysicalFusionCard fusion={signals.geospatial.physical_fusion} isSimulated={signals.geospatial.is_simulated} timestamp={signals.timestamp} />
-        </div>
-      )}
-
-      {/* Spatial Stats Card - NEW */}
-      {signals.geospatial && (
-        <div id="section-spatial">
-          <SpatialStatsCard stats={signals.geospatial.spatial_stats} legend={signals.geospatial.overlay.legend} isSimulated={signals.geospatial.is_simulated} timestamp={signals.timestamp} />
-        </div>
-      )}
 
       {/* Satellite Intelligence Panel */}
       <div id="section-satellite">
@@ -696,17 +606,14 @@ function AnalysisPanel({ signals, region, onShowNews, onSelectHeadline, marketSy
       {/* Top Headlines Preview */}
       {signals.news_raw.headlines.length > 0 && (
         <div id="section-headlines" className="card p-4">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">HEADLINES FEED</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Top Headlines</h3>
             <button 
               onClick={onShowNews}
-              className="text-[10px] text-neutral-400 hover:text-white transition-colors font-mono uppercase"
+              className="text-xs text-neutral-400 hover:text-white transition-colors"
             >
-              VIEW ALL →
+              View All →
             </button>
-          </div>
-          <div className="mb-3">
-            <DataTimestamp timestamp={signals.timestamp} label="FEED UPDATED" />
           </div>
           <div className="space-y-3">
             {signals.news_raw.headlines.slice(0, 3).map((h, i) => (
@@ -734,7 +641,7 @@ function AnalysisPanel({ signals, region, onShowNews, onSelectHeadline, marketSy
 
       {/* Market */}
       {signals.market_data && (
-        <MarketCard data={signals.market_data} timestamp={signals.timestamp} />
+        <MarketCard data={signals.market_data} />
       )}
 
       {/* Market Symbols */}
@@ -748,68 +655,65 @@ function AnalysisPanel({ signals, region, onShowNews, onSelectHeadline, marketSy
 
       {/* AI Insight */}
       {signals.ai_insight && (
-        <AIInsightCard insight={signals.ai_insight} timestamp={signals.timestamp} />
+        <AIInsightCard insight={signals.ai_insight} />
       )}
 
       {/* Risk Signals */}
       <div id="section-risk" className="card p-4">
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">RISK MONITOR</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Risk Monitor</h3>
           <div className="flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${
               signals.alerts.some(a => a.level === 'critical') ? 'bg-red-500 animate-pulse' :
               signals.alerts.some(a => a.level === 'warning') ? 'bg-amber-500' : 'bg-emerald-500'
             }`} />
-            <span className="text-[10px] text-neutral-500 font-mono uppercase">
+            <span className="text-[10px] text-neutral-500">
               {signals.alerts.filter(a => a.level === 'critical').length > 0 
-                ? `${signals.alerts.filter(a => a.level === 'critical').length} CRIT` 
+                ? `${signals.alerts.filter(a => a.level === 'critical').length} Critical` 
                 : signals.alerts.filter(a => a.level === 'warning').length > 0
-                ? `${signals.alerts.filter(a => a.level === 'warning').length} WARN`
-                : 'CLEAR'}
+                ? `${signals.alerts.filter(a => a.level === 'warning').length} Warning`
+                : 'All Clear'}
             </span>
           </div>
-        </div>
-        <div className="mb-3">
-          <DataTimestamp timestamp={signals.timestamp} />
         </div>
         
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="bg-neutral-900 rounded p-2 text-center">
+          <div className="bg-neutral-900 rounded-lg p-2 text-center">
             <CountUp
               value={signals.alerts.length}
               decimals={0}
               shouldAnimate={isAnimating}
               durationMs={600}
-              className="text-lg font-bold text-white font-mono tabular-nums"
+              className="text-lg font-bold text-white tabular-nums"
             />
-            <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">SIGNALS</div>
+            <div className="text-[9px] text-neutral-500 uppercase">Signals</div>
           </div>
-          <div className="bg-neutral-900 rounded p-2 text-center">
+          <div className="bg-neutral-900 rounded-lg p-2 text-center">
             <CountUp
               value={signals.satellite_raw.anomaly_strength * 100}
               decimals={0}
               suffix="%"
               shouldAnimate={isAnimating}
               durationMs={650}
-              className={`text-lg font-bold font-mono tabular-nums ${
+              className={`text-lg font-bold tabular-nums ${
                 signals.satellite_raw.anomaly_strength > 0.5 ? 'text-amber-400' : 'text-neutral-400'
               }`}
             />
-            <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">ANOMALY</div>
+            <div className="text-[9px] text-neutral-500 uppercase">Anomaly</div>
           </div>
-          <div className="bg-neutral-900 rounded p-2 text-center">
+          <div className="bg-neutral-900 rounded-lg p-2 text-center">
             <CountUp
               value={signals.news_raw.hype_intensity * 100}
               decimals={0}
               suffix="%"
               shouldAnimate={isAnimating}
               durationMs={700}
-              className={`text-lg font-bold font-mono tabular-nums ${
+              className={`text-lg font-bold tabular-nums ${
                 signals.news_raw.hype_intensity > 0.6 ? 'text-red-400' : 'text-neutral-400'
               }`}
             />
-            <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">HYPE</div>
+            <div className="text-[9px] text-neutral-500 uppercase">Hype</div>
           </div>
         </div>
         
@@ -875,17 +779,14 @@ function AnalysisPanel({ signals, region, onShowNews, onSelectHeadline, marketSy
 
       {/* Synthesis */}
       <div id="section-analysis" className="card p-4">
-        <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono mb-1">INTEL SYNTHESIS</h3>
-        <div className="mb-3">
-          <DataTimestamp timestamp={signals.timestamp} label="GENERATED" />
-        </div>
+        <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Analysis</h3>
         <p className="text-sm text-neutral-300 leading-relaxed">{signals.explanation.synthesis}</p>
       </div>
     </div>
   );
 }
 
-function DivergenceCard({ score, timestamp }: { score: number; timestamp?: string }) {
+function DivergenceCard({ score }: { score: number }) {
   const { isAnimating } = useEntryMotion();
   const severity = score > 70 ? 'critical' : score > 50 ? 'elevated' : score > 30 ? 'moderate' : 'low';
   const labels = { critical: 'CRITICAL', elevated: 'ELEVATED', moderate: 'MODERATE', low: 'ALIGNED' };
@@ -916,20 +817,20 @@ function DivergenceCard({ score, timestamp }: { score: number; timestamp?: strin
   
   return (
     <div className="card-elevated p-5">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">DIVERGENCE INDEX</span>
+          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Divergence Index</span>
           <div className="group relative">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-600 cursor-help">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 16v-4M12 8h.01" />
             </svg>
-            <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-neutral-900 border border-neutral-700 rounded text-xs text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+            <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-neutral-900 border border-neutral-700 rounded-lg text-xs text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
               Measures the gap between satellite-observed physical activity and media-driven market narrative. Higher = bigger disconnect.
             </div>
           </div>
         </div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
           severity === 'critical' ? 'bg-white text-black' :
           severity === 'elevated' ? 'bg-neutral-700 text-white' :
           'bg-neutral-800 text-neutral-400'
@@ -937,12 +838,6 @@ function DivergenceCard({ score, timestamp }: { score: number; timestamp?: strin
           {labels[severity]}
         </span>
       </div>
-      
-      {timestamp && (
-        <div className="mb-3">
-          <DataTimestamp timestamp={timestamp} />
-        </div>
-      )}
       
       <div className="flex items-start justify-between">
         <div>
@@ -952,11 +847,11 @@ function DivergenceCard({ score, timestamp }: { score: number; timestamp?: strin
               decimals={0}
               shouldAnimate={isAnimating}
               durationMs={800}
-              className={`text-5xl font-bold font-mono tabular-nums ${
+              className={`text-5xl font-bold tabular-nums ${
                 severity === 'critical' ? 'text-white' : 'text-neutral-300'
               }`}
             />
-            <span className="text-neutral-600 text-lg font-mono">/100</span>
+            <span className="text-neutral-600 text-lg">/100</span>
           </div>
           <p className="text-[11px] text-neutral-500 mt-1 max-w-[200px]">
             {descriptions[severity]}
@@ -994,7 +889,7 @@ function DivergenceCard({ score, timestamp }: { score: number; timestamp?: strin
               fill={severity === 'critical' ? '#fff' : severity === 'elevated' ? '#a1a1aa' : '#52525b'}
             />
           </svg>
-          <span className="absolute bottom-0 right-0 text-[9px] text-neutral-600 font-mono">7D</span>
+          <span className="absolute bottom-0 right-0 text-[9px] text-neutral-600">7d</span>
         </div>
       </div>
       
@@ -1010,10 +905,10 @@ function DivergenceCard({ score, timestamp }: { score: number; timestamp?: strin
       </div>
       
       {/* Scale labels */}
-      <div className="flex justify-between mt-1.5 text-[9px] text-neutral-600 font-mono uppercase">
-        <span>ALIGNED</span>
-        <span>MODERATE</span>
-        <span>CRITICAL</span>
+      <div className="flex justify-between mt-1.5 text-[9px] text-neutral-600">
+        <span>Aligned</span>
+        <span>Moderate</span>
+        <span>Critical</span>
       </div>
     </div>
   );
@@ -1048,14 +943,14 @@ function SignalCard({ label, description, value, sublabel, trend, icon }: {
               <path d="M18 14h-8M18 18h-8M18 10h-8M18 6h-8" />
             </svg>
           )}
-          <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-[0.1em] font-mono">{label.toUpperCase()}</span>
+          <span className="text-xs text-neutral-500 font-medium">{label}</span>
         </div>
         {trend && (
-          <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono uppercase ${
+          <span className={`text-xs px-1.5 py-0.5 rounded ${
             trend === 'expanding' ? 'bg-emerald-900/30 text-emerald-400' : 
             trend === 'contracting' ? 'bg-red-900/30 text-red-400' : 'bg-neutral-800 text-neutral-500'
           }`}>
-            {trend === 'expanding' ? '↑ GROW' : trend === 'contracting' ? '↓ DECL' : '→ STBL'}
+            {trend === 'expanding' ? '↑ Growing' : trend === 'contracting' ? '↓ Declining' : '→ Stable'}
           </span>
         )}
       </div>
@@ -1064,7 +959,7 @@ function SignalCard({ label, description, value, sublabel, trend, icon }: {
         <p className="text-[10px] text-neutral-600 mb-2 leading-relaxed">{description}</p>
       )}
       
-      <div className={`text-2xl font-bold font-mono tabular-nums ${
+      <div className={`text-2xl font-bold tabular-nums ${
         isPositive ? 'text-white' : isNegative ? 'text-neutral-400' : 'text-neutral-500'
       }`}>
         <CountUp
@@ -1074,11 +969,11 @@ function SignalCard({ label, description, value, sublabel, trend, icon }: {
           shouldAnimate={isAnimating}
           durationMs={700}
         />
-        <span className="text-[9px] font-normal text-neutral-600 ml-1 uppercase font-mono">
-          {isPositive ? 'BULLISH' : isNegative ? 'BEARISH' : 'NEUTRAL'}
+        <span className="text-xs font-normal text-neutral-600 ml-1">
+          {isPositive ? 'bullish' : isNegative ? 'bearish' : 'neutral'}
         </span>
       </div>
-      <div className="text-[10px] text-neutral-600 mt-1 font-mono uppercase">{sublabel}</div>
+      <div className="text-[10px] text-neutral-600 mt-1">{sublabel}</div>
       <div className="mt-3 h-1 bg-neutral-800 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
@@ -1091,42 +986,35 @@ function SignalCard({ label, description, value, sublabel, trend, icon }: {
   );
 }
 
-function MarketCard({ data, timestamp }: { data: SignalsResponse['market_data']; timestamp?: string }) {
+function MarketCard({ data }: { data: SignalsResponse['market_data'] }) {
   const { isAnimating } = useEntryMotion();
   if (!data) return null;
   const isUp = data.change_1w_pct > 0;
   
   return (
     <div className="card p-4">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-neutral-500 font-semibold font-mono uppercase tracking-[0.1em]">MARKET DATA</span>
-          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded font-mono ${
-            data.trend === 'bullish' ? 'bg-neutral-800 text-white' :
-            data.trend === 'bearish' ? 'bg-neutral-900 text-neutral-400' :
-            'bg-neutral-900 text-neutral-500'
-          }`}>
-            {data.trend.toUpperCase()}
-          </span>
-        </div>
-      </div>
-      {timestamp && (
-        <div className="mb-3">
-          <DataTimestamp timestamp={timestamp} label="PRICE AS OF" />
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-500 font-medium">Market</span>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+              data.trend === 'bullish' ? 'bg-neutral-800 text-white' :
+              data.trend === 'bearish' ? 'bg-neutral-900 text-neutral-400' :
+              'bg-neutral-900 text-neutral-500'
+            }`}>
+              {data.trend.toUpperCase()}
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
             <CountUp
               value={data.price}
               decimals={2}
               prefix="$"
               shouldAnimate={isAnimating}
               durationMs={750}
-              className="text-xl font-bold font-mono tabular-nums"
+              className="text-xl font-bold tabular-nums"
             />
-            <span className="text-[10px] text-neutral-600 font-mono">{data.ticker}</span>
+            <span className="text-xs text-neutral-600">{data.ticker}</span>
           </div>
         </div>
         <div className="text-right">
@@ -1137,43 +1025,38 @@ function MarketCard({ data, timestamp }: { data: SignalsResponse['market_data'];
             suffix="%"
             shouldAnimate={isAnimating}
             durationMs={700}
-            className={`text-lg font-bold font-mono tabular-nums ${isUp ? 'text-white' : 'text-neutral-400'}`}
+            className={`text-lg font-bold tabular-nums ${isUp ? 'text-white' : 'text-neutral-400'}`}
           />
-          <div className="text-[10px] text-neutral-600 font-mono uppercase">7D CHG</div>
+          <div className="text-[10px] text-neutral-600">7-day</div>
         </div>
       </div>
     </div>
   );
 }
 
-function AIInsightCard({ insight, timestamp }: { insight: SignalsResponse['ai_insight']; timestamp?: string }) {
+function AIInsightCard({ insight }: { insight: SignalsResponse['ai_insight'] }) {
   const [expanded, setExpanded] = useState(false);
   
   if (!insight) return null;
   
   return (
     <div className="card p-4 border-neutral-700">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-400">
             <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z" />
             <path d="M9 14v2M15 14v2" />
           </svg>
-          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">AI ANALYSIS</span>
-          <span className="text-[9px] px-1.5 py-0.5 bg-violet-900/30 text-violet-400 rounded font-mono">
-            {insight.model.toUpperCase()}
+          <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">AI Analysis</span>
+          <span className="text-[10px] px-1.5 py-0.5 bg-violet-900/30 text-violet-400 rounded">
+            {insight.model}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-[9px] text-neutral-500 font-mono uppercase">
+        <div className="flex items-center gap-1 text-[10px] text-neutral-500">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-          LIVE
+          Live
         </div>
       </div>
-      {timestamp && (
-        <div className="mb-3">
-          <DataTimestamp timestamp={timestamp} label="INFERENCE" />
-        </div>
-      )}
       
       {/* Summary - Always visible */}
       <p className="text-sm text-neutral-300 leading-relaxed">{insight.summary}</p>
@@ -1214,8 +1097,8 @@ function AIInsightCard({ insight, timestamp }: { insight: SignalsResponse['ai_in
           {/* Confidence Score */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-neutral-600 uppercase tracking-wider font-mono">CONFIDENCE</span>
-              <span className="text-xs text-neutral-400 font-mono tabular-nums">{(insight.confidence * 100).toFixed(0)}%</span>
+              <span className="text-[10px] text-neutral-600 uppercase tracking-wider">Confidence Level</span>
+              <span className="text-xs text-neutral-400 tabular-nums">{(insight.confidence * 100).toFixed(0)}%</span>
             </div>
             <div className="h-1 bg-neutral-800 rounded-full overflow-hidden">
               <div 
@@ -1227,19 +1110,19 @@ function AIInsightCard({ insight, timestamp }: { insight: SignalsResponse['ai_in
           
           {/* Sentiment Breakdown */}
           <div>
-            <span className="text-[10px] text-neutral-600 uppercase tracking-wider font-mono">SENTIMENT SCORE</span>
+            <span className="text-[10px] text-neutral-600 uppercase tracking-wider">Sentiment Analysis</span>
             <div className="mt-2 flex items-center gap-3">
-              <div className={`text-lg font-bold font-mono tabular-nums ${
+              <div className={`text-lg font-bold tabular-nums ${
                 insight.sentiment_score > 0.1 ? 'text-emerald-400' : 
                 insight.sentiment_score < -0.1 ? 'text-red-400' : 'text-neutral-400'
               }`}>
                 {insight.sentiment_score > 0 ? '+' : ''}{insight.sentiment_score.toFixed(2)}
               </div>
-              <span className="text-[10px] text-neutral-500 font-mono uppercase">
-                {insight.sentiment_score > 0.3 ? 'STRONG POS' :
-                 insight.sentiment_score > 0.1 ? 'MOD POS' :
-                 insight.sentiment_score < -0.3 ? 'STRONG NEG' :
-                 insight.sentiment_score < -0.1 ? 'MOD NEG' : 'NEUTRAL'}
+              <span className="text-xs text-neutral-500">
+                {insight.sentiment_score > 0.3 ? 'Strongly Positive' :
+                 insight.sentiment_score > 0.1 ? 'Moderately Positive' :
+                 insight.sentiment_score < -0.3 ? 'Strongly Negative' :
+                 insight.sentiment_score < -0.1 ? 'Moderately Negative' : 'Neutral'}
               </span>
             </div>
           </div>
@@ -1247,10 +1130,10 @@ function AIInsightCard({ insight, timestamp }: { insight: SignalsResponse['ai_in
           {/* Risk Factors */}
           {insight.risk_factors.length > 0 && (
             <div>
-              <span className="text-[10px] text-neutral-600 uppercase tracking-wider font-mono">RISK FACTORS</span>
+              <span className="text-[10px] text-neutral-600 uppercase tracking-wider">Risk Factors Identified</span>
               <div className="mt-2 space-y-2">
                 {insight.risk_factors.map((risk, i) => (
-                  <div key={i} className="flex items-start gap-2 p-2 bg-red-900/10 border border-red-900/20 rounded">
+                  <div key={i} className="flex items-start gap-2 p-2 bg-red-900/10 border border-red-900/20 rounded-lg">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400 mt-0.5 flex-shrink-0">
                       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                       <line x1="12" y1="9" x2="12" y2="13" />
@@ -1264,12 +1147,12 @@ function AIInsightCard({ insight, timestamp }: { insight: SignalsResponse['ai_in
           )}
           
           {/* Model Info */}
-          <div className="text-[9px] text-neutral-600 flex items-center gap-2 font-mono uppercase">
+          <div className="text-[10px] text-neutral-600 flex items-center gap-2">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 16v-4M12 8h.01" />
             </svg>
-            MODEL: {insight.model.toUpperCase()} • REAL-TIME
+            Analysis powered by {insight.model} • Updated in real-time
           </div>
         </div>
       )}
@@ -1347,7 +1230,7 @@ function SatellitePanel({ satellite, score, region, topHeadline }: {
         {/* Bottom info */}
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
           <div>
-            <div className="text-[10px] text-neutral-400 uppercase tracking-wider font-mono">VIIRS NIGHT LIGHT</div>
+            <div className="text-[10px] text-neutral-400 uppercase tracking-wider">Night Light Analysis</div>
             <CountUp
               value={Math.abs(satellite.activity_delta_pct)}
               decimals={1}
@@ -1355,12 +1238,12 @@ function SatellitePanel({ satellite, score, region, topHeadline }: {
               suffix="%"
               shouldAnimate={isAnimating}
               durationMs={800}
-              className={`font-bold font-mono text-white transition-all duration-300 ${expanded ? 'text-2xl' : 'text-lg'}`}
+              className={`font-bold text-white transition-all duration-300 ${expanded ? 'text-2xl' : 'text-lg'}`}
             />
           </div>
-          <div className="text-right font-mono">
-            <div className="text-[10px] text-neutral-500 uppercase">VS {satellite.baseline_window_days}D BASELINE</div>
-            <div className="text-[10px] text-neutral-300">OBS: {satellite.last_observation}</div>
+          <div className="text-right">
+            <div className="text-[10px] text-neutral-500">vs {satellite.baseline_window_days}-day baseline</div>
+            <div className="text-xs text-neutral-300">Last: {satellite.last_observation}</div>
           </div>
         </div>
       </div>
@@ -1368,27 +1251,27 @@ function SatellitePanel({ satellite, score, region, topHeadline }: {
       {/* Metrics Grid */}
       <div className="p-3 grid grid-cols-4 gap-2 border-t border-neutral-800">
         <div className="text-center">
-          <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">CONF</div>
-          <div className="text-sm font-semibold text-white font-mono">{(satellite.confidence * 100).toFixed(0)}%</div>
+          <div className="text-[10px] text-neutral-500 uppercase">Confidence</div>
+          <div className="text-sm font-semibold text-white">{(satellite.confidence * 100).toFixed(0)}%</div>
         </div>
         <div className="text-center">
-          <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">ANOM</div>
-          <div className={`text-sm font-semibold font-mono ${satellite.anomaly_strength > 0.5 ? 'text-amber-400' : 'text-white'}`}>
+          <div className="text-[10px] text-neutral-500 uppercase">Anomaly</div>
+          <div className={`text-sm font-semibold ${satellite.anomaly_strength > 0.5 ? 'text-amber-400' : 'text-white'}`}>
             {(satellite.anomaly_strength * 100).toFixed(0)}%
           </div>
         </div>
         <div className="text-center">
-          <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">TREND</div>
-          <div className={`text-sm font-semibold font-mono uppercase ${
+          <div className="text-[10px] text-neutral-500 uppercase">Trend</div>
+          <div className={`text-sm font-semibold capitalize ${
             satellite.trend === 'expanding' ? 'text-emerald-400' : 
             satellite.trend === 'contracting' ? 'text-red-400' : 'text-neutral-400'
           }`}>
-            {satellite.trend === 'expanding' ? 'EXP' : satellite.trend === 'contracting' ? 'CON' : 'STB'}
+            {satellite.trend}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">SIG</div>
-          <div className={`text-sm font-semibold font-mono ${score > 0.1 ? 'text-emerald-400' : score < -0.1 ? 'text-red-400' : 'text-neutral-400'}`}>
+          <div className="text-[10px] text-neutral-500 uppercase">Signal</div>
+          <div className={`text-sm font-semibold ${score > 0.1 ? 'text-emerald-400' : score < -0.1 ? 'text-red-400' : 'text-neutral-400'}`}>
             {score > 0 ? '+' : ''}{score.toFixed(2)}
           </div>
         </div>
@@ -1446,261 +1329,6 @@ function SentimentDot({ sentiment }: { sentiment: number }) {
     <span className={`w-1.5 h-1.5 rounded-full ${
       sentiment > 0.1 ? 'bg-white' : sentiment < -0.1 ? 'bg-neutral-500' : 'bg-neutral-600'
     }`} />
-  );
-}
-
-function PhysicalFusionCard({ fusion, isSimulated, timestamp }: { fusion: PhysicalFusion; isSimulated: boolean; timestamp?: string }) {
-  const { isAnimating } = useEntryMotion();
-  
-  // Agreement color
-  const agreementColor = fusion.agreement > 0.7 
-    ? 'text-emerald-400' 
-    : fusion.agreement > 0.4 
-    ? 'text-amber-400' 
-    : 'text-red-400';
-  
-  const agreementLabel = fusion.agreement > 0.7 
-    ? 'STRONG' 
-    : fusion.agreement > 0.4 
-    ? 'MODERATE' 
-    : 'LOW';
-  
-  return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-          </svg>
-          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">PROXY SENSOR FUSION</span>
-          {isSimulated && (
-            <span className="text-[9px] px-1.5 py-0.5 bg-amber-900/30 text-amber-400 rounded font-mono">SIM</span>
-          )}
-        </div>
-      </div>
-      {timestamp && (
-        <div className="mb-3">
-          <DataTimestamp timestamp={timestamp} />
-        </div>
-      )}
-      
-      {/* Fused Signal Gauge */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="text-[10px] text-neutral-500 uppercase mb-1 font-mono tracking-wider">FUSED ACTIVITY INDEX</div>
-          <div className="flex items-baseline gap-1">
-            <CountUp
-              value={Math.abs(fusion.fused_signal)}
-              decimals={2}
-              prefix={fusion.fused_signal >= 0 ? '+' : '-'}
-              shouldAnimate={isAnimating}
-              durationMs={700}
-              className={`text-2xl font-bold font-mono tabular-nums ${
-                fusion.fused_signal > 0.1 ? 'text-emerald-400' : 
-                fusion.fused_signal < -0.1 ? 'text-red-400' : 'text-neutral-400'
-              }`}
-            />
-            <span className="text-[9px] text-neutral-600 font-mono uppercase">
-              {fusion.fused_signal > 0.1 ? 'EXPANDING' : fusion.fused_signal < -0.1 ? 'CONTRACT' : 'STABLE'}
-            </span>
-          </div>
-        </div>
-        
-        <div className="text-right">
-          <div className="text-[10px] text-neutral-500 uppercase mb-1 font-mono tracking-wider">AGREEMENT</div>
-          <div className="flex items-baseline gap-1 justify-end">
-            <CountUp
-              value={fusion.agreement * 100}
-              decimals={0}
-              suffix="%"
-              shouldAnimate={isAnimating}
-              durationMs={650}
-              className={`text-lg font-bold font-mono tabular-nums ${agreementColor}`}
-            />
-          </div>
-          <div className={`text-[9px] font-mono ${agreementColor}`}>{agreementLabel}</div>
-        </div>
-      </div>
-      
-      {/* Fused Signal Bar */}
-      <div className="mb-4">
-        <div className="h-2 bg-neutral-800 rounded-full overflow-hidden relative">
-          <div className="absolute inset-y-0 left-1/2 w-px bg-neutral-600" />
-          <div
-            className={`absolute h-full transition-all duration-500 ${
-              fusion.fused_signal > 0 ? 'bg-emerald-500 left-1/2' : 'bg-red-500 right-1/2'
-            }`}
-            style={{ 
-              width: `${Math.abs(fusion.fused_signal) * 50}%`,
-              ...(fusion.fused_signal < 0 ? { left: `${50 - Math.abs(fusion.fused_signal) * 50}%` } : {})
-            }}
-          />
-        </div>
-        <div className="flex justify-between mt-1 text-[9px] text-neutral-600 font-mono">
-          <span>-1.0</span>
-          <span>0</span>
-          <span>+1.0</span>
-        </div>
-      </div>
-      
-      {/* Individual Proxies */}
-      <div className="space-y-2">
-        <div className="text-[10px] text-neutral-500 uppercase font-mono tracking-wider">PROXY SIGNALS</div>
-        {fusion.proxies.map((proxy) => (
-          <div key={proxy.name} className="flex items-center justify-between p-2 bg-neutral-900/50 rounded">
-            <div className="flex items-center gap-2">
-              {proxy.name === 'night_lights' ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
-                  <circle cx="12" cy="12" r="5" />
-                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                </svg>
-              ) : proxy.name === 'ndvi' ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-400">
-                  <path d="M7 20h10" />
-                  <path d="M12 20v-8" />
-                  <path d="M12 12c-2-2-4-2.5-6-2 2-4 6-6 6-6s4 2 6 6c-2-.5-4 0-6 2z" />
-                </svg>
-              ) : proxy.name === 'sar_backscatter' ? (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
-                  <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
-                  <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4" />
-                  <circle cx="12" cy="12" r="2" />
-                  <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4" />
-                  <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
-                </svg>
-              ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-400">
-                  <circle cx="12" cy="12" r="10" />
-                </svg>
-              )}
-              <span className="text-[10px] text-neutral-300 uppercase font-mono tracking-wider">
-                {proxy.name === 'sar_backscatter' ? 'SAR' : proxy.name === 'night_lights' ? 'VIIRS' : 'NDVI'}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`text-xs font-semibold font-mono tabular-nums ${
-                proxy.value > 0.1 ? 'text-emerald-400' : 
-                proxy.value < -0.1 ? 'text-red-400' : 'text-neutral-400'
-              }`}>
-                {proxy.value > 0 ? '+' : ''}{proxy.value.toFixed(2)}
-              </span>
-              <div className="flex items-center gap-1">
-                <div className="w-12 h-1 bg-neutral-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-cyan-500 rounded-full"
-                    style={{ width: `${proxy.confidence * 100}%` }}
-                  />
-                </div>
-                <span className="text-[9px] text-neutral-500 font-mono">{(proxy.confidence * 100).toFixed(0)}%</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SpatialStatsCard({ stats, legend, isSimulated, timestamp }: { stats: SpatialStats; legend: { min_val: number; max_val: number; unit: string; description: string }; isSimulated: boolean; timestamp?: string }) {
-  const { isAnimating } = useEntryMotion();
-  
-  return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-400">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="M21 15l-5-5L5 21" />
-          </svg>
-          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-[0.1em] font-mono">SPATIAL ANOMALY STATS</span>
-          {isSimulated && (
-            <span className="text-[9px] px-1.5 py-0.5 bg-amber-900/30 text-amber-400 rounded font-mono">SIM</span>
-          )}
-        </div>
-      </div>
-      {timestamp && (
-        <div className="mb-3">
-          <DataTimestamp timestamp={timestamp} />
-        </div>
-      )}
-      
-      {/* Legend */}
-      <div className="mb-3 p-2 bg-neutral-900/50 rounded">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">Z-SCORE SCALE</span>
-          <span className="text-[9px] text-neutral-600 font-mono">{legend.description}</span>
-        </div>
-        <div className="h-2 rounded overflow-hidden" style={{ 
-          background: 'linear-gradient(to right, rgb(50, 50, 200), rgb(220, 220, 255), rgb(255, 100, 100))' 
-        }} />
-        <div className="flex justify-between mt-1 text-[9px] text-neutral-500 font-mono">
-          <span>{legend.min_val} BELOW</span>
-          <span>0</span>
-          <span>{legend.max_val} ABOVE</span>
-        </div>
-      </div>
-      
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-neutral-900 rounded p-2.5">
-          <div className="text-[10px] text-neutral-500 uppercase mb-1 font-mono tracking-wider">MEAN ANOMALY</div>
-          <CountUp
-            value={Math.abs(stats.mean_anomaly)}
-            decimals={2}
-            prefix={stats.mean_anomaly >= 0 ? '+' : '-'}
-            suffix="σ"
-            shouldAnimate={isAnimating}
-            durationMs={600}
-            className={`text-lg font-bold font-mono tabular-nums ${
-              stats.mean_anomaly > 0.5 ? 'text-red-400' : 
-              stats.mean_anomaly < -0.5 ? 'text-blue-400' : 'text-neutral-300'
-            }`}
-          />
-        </div>
-        <div className="bg-neutral-900 rounded p-2.5">
-          <div className="text-[10px] text-neutral-500 uppercase mb-1 font-mono tracking-wider">MAX ANOMALY</div>
-          <CountUp
-            value={Math.abs(stats.max_anomaly)}
-            decimals={2}
-            prefix={stats.max_anomaly >= 0 ? '+' : '-'}
-            suffix="σ"
-            shouldAnimate={isAnimating}
-            durationMs={650}
-            className={`text-lg font-bold font-mono tabular-nums ${
-              stats.max_anomaly > 2 ? 'text-red-400' : 'text-neutral-300'
-            }`}
-          />
-        </div>
-        <div className="bg-neutral-900 rounded p-2.5">
-          <div className="text-[10px] text-neutral-500 uppercase mb-1 font-mono tracking-wider">VARIANCE</div>
-          <CountUp
-            value={stats.spatial_variance}
-            decimals={3}
-            shouldAnimate={isAnimating}
-            durationMs={700}
-            className={`text-lg font-bold font-mono tabular-nums ${
-              stats.spatial_variance > 1 ? 'text-amber-400' : 'text-neutral-300'
-            }`}
-          />
-        </div>
-        <div className="bg-neutral-900 rounded p-2.5">
-          <div className="text-[10px] text-neutral-500 uppercase mb-1 font-mono tracking-wider">HOTSPOT %</div>
-          <CountUp
-            value={stats.hotspot_fraction * 100}
-            decimals={1}
-            suffix="%"
-            shouldAnimate={isAnimating}
-            durationMs={750}
-            className={`text-lg font-bold font-mono tabular-nums ${
-              stats.hotspot_fraction > 0.1 ? 'text-red-400' : 
-              stats.hotspot_fraction > 0.05 ? 'text-amber-400' : 'text-emerald-400'
-            }`}
-          />
-          <div className="text-[9px] text-neutral-600 mt-0.5 font-mono">|Z| &gt; 2</div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -1888,8 +1516,131 @@ function SentimentBar({ sentiment }: { sentiment: number }) {
   );
 }
 
+function CreatorBioModal({ onContinue, onTutorial }: { onContinue: () => void; onTutorial: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={onContinue} />
+      <div className="relative w-full max-w-sm bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden">
+        <div className="p-6">
+          {/* Header badge */}
+          <div className="flex justify-center mb-5">
+            <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-medium">Meet the Creator</span>
+          </div>
+          
+          {/* Profile Picture */}
+          <div className="flex justify-center mb-4">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-neutral-700 to-neutral-800 p-[2px]">
+              <div className="w-full h-full rounded-full bg-neutral-900 overflow-hidden">
+                {/* 
+                  ADD YOUR PHOTO HERE:
+                  Save your image to: frontend/public/creator.jpg 
+                */}
+                <img 
+                  src="/creator.jpg" 
+                  alt="Creator" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                    }
+                  }}
+                />
+                <div className="w-full h-full items-center justify-center text-3xl font-bold text-neutral-600 hidden">
+                  A
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Name & Title */}
+          <div className="text-center mb-5">
+            <h3 className="text-xl font-semibold text-white">Alex</h3>
+            <div className="flex items-center justify-center gap-2 mt-1">
+              <span className="text-xs text-neutral-500">Creator & Developer</span>
+              <span className="w-1 h-1 rounded-full bg-neutral-700" />
+              <span className="text-xs text-neutral-600">High School Student</span>
+            </div>
+          </div>
+          
+          {/* Interest Tags */}
+          <div className="flex flex-wrap justify-center gap-1.5 mb-5">
+            {['Economics', 'Markets', 'Data Science', 'Geopolitics'].map((tag) => (
+              <span 
+                key={tag}
+                className="px-2.5 py-1 text-[10px] font-medium bg-neutral-900 text-neutral-400 rounded-full border border-neutral-800"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          
+          {/* Bio - Always visible */}
+          <div className="bg-neutral-900/50 rounded-xl p-4 border border-neutral-800/50">
+            <p className="text-sm text-neutral-300 leading-relaxed">
+              I built Primordia because I noticed a pattern: <span className="text-white">headlines often tell a different story than reality</span>. Satellite data doesn't lie—night lights and shipping activity reveal economic truth before markets catch up.
+            </p>
+            
+            {/* Expandable section */}
+            <div className={`overflow-hidden transition-all duration-300 ${expanded ? 'max-h-96 mt-3 pt-3 border-t border-neutral-800' : 'max-h-0'}`}>
+              <div className="space-y-3 text-sm text-neutral-400 leading-relaxed">
+                <p>
+                  <span className="text-neutral-300 font-medium">The Problem:</span> Information asymmetry gives institutional investors an unfair advantage. They have access to alternative data—satellite imagery, shipping logs, industrial metrics—while retail investors rely on lagging news.
+                </p>
+                <p>
+                  <span className="text-neutral-300 font-medium">The Solution:</span> Primordia democratizes this intelligence. By combining NASA satellite data, real-time news sentiment, and market signals, anyone can now spot divergence between narrative and reality.
+                </p>
+                <p>
+                  <span className="text-neutral-300 font-medium">The Vision:</span> A world where ground truth is accessible to everyone—not just hedge funds with million-dollar data subscriptions.
+                </p>
+              </div>
+            </div>
+            
+            {/* Expand/Collapse button */}
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1.5 mt-3 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+            >
+              <svg 
+                width="12" 
+                height="12" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2"
+                className={`transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              {expanded ? 'Show less' : 'Read more about the mission'}
+            </button>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex gap-2 mt-5">
+            <button
+              onClick={onTutorial}
+              className="flex-1 py-2.5 text-sm bg-neutral-900 text-neutral-300 rounded-lg hover:bg-neutral-800 hover:text-white transition-colors border border-neutral-800"
+            >
+              How it works
+            </button>
+            <button
+              onClick={onContinue}
+              className="flex-1 py-2.5 text-sm bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WelcomeModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<'welcome' | 'tutorial'>('welcome');
+  const [step, setStep] = useState<'welcome' | 'creator' | 'tutorial'>('welcome');
 
   // Tutorial view
   if (step === 'tutorial') {
@@ -1901,7 +1652,7 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
             <div className="flex items-center justify-between mb-5">
               <span className="text-xs text-neutral-500 uppercase tracking-wider font-medium">Quick Start</span>
               <button
-                onClick={() => setStep('welcome')}
+                onClick={() => setStep('creator')}
                 className="text-neutral-500 hover:text-white transition-colors text-xs"
               >
                 Back
@@ -1939,6 +1690,11 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
     );
   }
 
+  // Creator bio view
+  if (step === 'creator') {
+    return <CreatorBioModal onContinue={onClose} onTutorial={() => setStep('tutorial')} />;
+  }
+
   // Initial welcome view
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1954,20 +1710,12 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
             Intelligence terminal analyzing satellite imagery, news sentiment, and market data to detect divergence signals.
           </p>
           
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStep('tutorial')}
-              className="flex-1 py-2.5 text-sm bg-neutral-900 text-neutral-300 rounded-lg hover:bg-neutral-800 hover:text-white transition-colors border border-neutral-800"
-            >
-              How it works
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 text-sm bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium"
-            >
-              Continue
-            </button>
-          </div>
+          <button
+            onClick={() => setStep('creator')}
+            className="w-full py-2.5 text-sm bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium"
+          >
+            Continue
+          </button>
         </div>
       </div>
     </div>

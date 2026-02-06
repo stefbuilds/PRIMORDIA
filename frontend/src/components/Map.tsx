@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Region, Overlay } from '@/types';
+import { Region } from '@/types';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
@@ -12,43 +12,15 @@ interface MapProps {
   onRegionSelect: (region: Region) => void;
   regions: Region[];
   mapStyle?: 'satellite' | 'globe';
-  overlay?: Overlay | null;
-  showOverlay?: boolean;
 }
 
 type ViewMode = 'globe' | 'detailed';
 
-export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle = 'satellite', overlay, showOverlay = false }: MapProps) {
+export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle = 'satellite' }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(mapStyle === 'globe' ? 'globe' : 'detailed');
-  const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [showCrosshair, setShowCrosshair] = useState(true);
-  const overlaySourceId = 'anomaly-overlay';
-  const overlayLayerId = 'anomaly-overlay-layer';
-
-  // Format coordinates to DMS (Degrees Minutes Seconds)
-  const formatDMS = (decimal: number, isLat: boolean) => {
-    const absolute = Math.abs(decimal);
-    const degrees = Math.floor(absolute);
-    const minutesNotTruncated = (absolute - degrees) * 60;
-    const minutes = Math.floor(minutesNotTruncated);
-    const seconds = ((minutesNotTruncated - minutes) * 60).toFixed(1);
-    const direction = isLat ? (decimal >= 0 ? 'N' : 'S') : (decimal >= 0 ? 'E' : 'W');
-    return `${degrees}°${minutes}'${seconds}"${direction}`;
-  };
-
-  // Format to MGRS-like grid reference (simplified)
-  const formatGridRef = (lat: number, lng: number) => {
-    // Simplified UTM zone calculation
-    const zone = Math.floor((lng + 180) / 6) + 1;
-    const band = 'CDEFGHJKLMNPQRSTUVWX'[Math.floor((lat + 80) / 8)] || 'X';
-    // Simplified easting/northing (not real MGRS, but looks official)
-    const easting = Math.abs(Math.round((lng % 6) * 100000 + 500000)).toString().padStart(6, '0');
-    const northing = Math.abs(Math.round((lat % 8) * 100000 + 500000)).toString().padStart(6, '0');
-    return `${zone}${band} ${easting.slice(0, 3)} ${northing.slice(0, 3)}`;
-  };
 
   // Map styles
   const STYLES = {
@@ -86,15 +58,6 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
     map.current.on('load', () => {
       setMapLoaded(true);
       addRegionLayers();
-    });
-
-    // Track cursor coordinates
-    map.current.on('mousemove', (e) => {
-      setCursorCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-    });
-
-    map.current.on('mouseout', () => {
-      setCursorCoords(null);
     });
 
     // Enable scroll zoom
@@ -221,38 +184,6 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
     }
   }, [regions, selectedRegion, mapLoaded]);
 
-  // Helper to add overlay after style change
-  const addOverlayLayer = () => {
-    if (!map.current || !showOverlay || !overlay || overlay.type !== 'image') return;
-    
-    const [west, south, east, north] = overlay.bbox;
-    const urlWithTimestamp = `${overlay.url}?t=${Date.now()}`;
-    
-    if (map.current.getSource(overlaySourceId)) return; // Already added
-    
-    map.current.addSource(overlaySourceId, {
-      type: 'image',
-      url: urlWithTimestamp,
-      coordinates: [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-      ],
-    });
-    
-    const firstRegionLayer = map.current.getLayer('region-fill') ? 'region-fill' : undefined;
-    map.current.addLayer({
-      id: overlayLayerId,
-      type: 'raster',
-      source: overlaySourceId,
-      paint: {
-        'raster-opacity': 0.7,
-        'raster-fade-duration': 300,
-      },
-    }, firstRegionLayer);
-  };
-
   // Handle view mode change
   const switchViewMode = (mode: ViewMode) => {
     if (!map.current || mode === viewMode) return;
@@ -284,7 +215,6 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
         });
         addRegionLayers();
         updateRegions();
-        addOverlayLayer();
       });
     } else {
       // Switch to detailed satellite view
@@ -308,7 +238,6 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
       map.current.once('style.load', () => {
         addRegionLayers();
         updateRegions();
-        addOverlayLayer();
       });
     }
   };
@@ -373,58 +302,6 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
     }
   }, [selectedRegion, mapLoaded]);
 
-  // Manage anomaly overlay layer
-  useEffect(() => {
-    if (!map.current || !mapLoaded) return;
-
-    const addOrUpdateOverlay = () => {
-      if (!map.current) return;
-
-      // Remove existing overlay if present
-      if (map.current.getLayer(overlayLayerId)) {
-        map.current.removeLayer(overlayLayerId);
-      }
-      if (map.current.getSource(overlaySourceId)) {
-        map.current.removeSource(overlaySourceId);
-      }
-
-      // Add overlay if enabled and data available
-      if (showOverlay && overlay && overlay.type === 'image') {
-        const [west, south, east, north] = overlay.bbox;
-        
-        // Add cache-busting timestamp to URL
-        const urlWithTimestamp = `${overlay.url}?t=${Date.now()}`;
-        
-        map.current.addSource(overlaySourceId, {
-          type: 'image',
-          url: urlWithTimestamp,
-          coordinates: [
-            [west, north],  // top-left
-            [east, north],  // top-right
-            [east, south],  // bottom-right
-            [west, south],  // bottom-left
-          ],
-        });
-
-        // Add raster layer before region layers so regions appear on top
-        const firstRegionLayer = map.current.getLayer('region-fill') ? 'region-fill' : undefined;
-        
-        map.current.addLayer({
-          id: overlayLayerId,
-          type: 'raster',
-          source: overlaySourceId,
-          paint: {
-            'raster-opacity': 0.7,
-            'raster-fade-duration': 300,
-          },
-        }, firstRegionLayer);
-      }
-    };
-
-    // Run immediately
-    addOrUpdateOverlay();
-  }, [showOverlay, overlay, mapLoaded]);
-
   // Zoom controls
   const zoomIn = () => {
     if (map.current) {
@@ -442,55 +319,9 @@ export default function Map({ selectedRegion, onRegionSelect, regions, mapStyle 
     <div className="absolute inset-0 p-3">
       <div className="relative w-full h-full rounded-2xl overflow-hidden">
         <div ref={mapContainer} className="w-full h-full" />
-
-        {/* Grid Crosshair Overlay */}
-        {showCrosshair && viewMode === 'detailed' && (
-          <div className="absolute inset-0 pointer-events-none z-[5]">
-            {/* Center crosshair */}
-            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-cyan-500/30" />
-            <div className="absolute top-1/2 left-0 right-0 h-px bg-cyan-500/30" />
-            
-            {/* Corner brackets */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="relative w-16 h-16">
-                {/* Top-left bracket */}
-                <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-cyan-400/60" />
-                {/* Top-right bracket */}
-                <div className="absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2 border-cyan-400/60" />
-                {/* Bottom-left bracket */}
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-cyan-400/60" />
-                {/* Bottom-right bracket */}
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-cyan-400/60" />
-                {/* Center dot */}
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-cyan-400 rounded-full" />
-              </div>
-            </div>
-
-            {/* Grid lines (every 25%) */}
-            <div className="absolute left-1/4 top-0 bottom-0 w-px bg-white/5" />
-            <div className="absolute left-3/4 top-0 bottom-0 w-px bg-white/5" />
-            <div className="absolute top-1/4 left-0 right-0 h-px bg-white/5" />
-            <div className="absolute top-3/4 left-0 right-0 h-px bg-white/5" />
-          </div>
-        )}
-
       
         {/* Minimal Controls */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
-        {/* Crosshair Toggle */}
-        <button
-          onClick={() => setShowCrosshair(!showCrosshair)}
-          className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${
-            showCrosshair ? 'bg-cyan-900/60 text-cyan-400' : 'bg-black/60 text-white/70 hover:bg-black/80 hover:text-white'
-          }`}
-          title="Toggle Grid Overlay"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 2v20M2 12h20" />
-          </svg>
-        </button>
-
         {/* Mode Toggle */}
         <button
           onClick={() => switchViewMode(viewMode === 'globe' ? 'detailed' : 'globe')}

@@ -7,9 +7,6 @@ module.exports = {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        mono: ['JetBrains Mono', 'IBM Plex Mono', 'SF Mono', 'Consolas', 'monospace'],
-      },
       colors: {
         pulse: {
           dark: "#0f172a",

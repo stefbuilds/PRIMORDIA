@@ -85,7 +85,6 @@ export interface SignalsResponse {
   news_raw: NewsRaw;
   market_data: MarketData | null;
   ai_insight: AIInsight | null;
-  geospatial: GeospatialData | null;
   alerts: Alert[];
   explanation: Explanation;
 }
@@ -104,47 +103,4 @@ export interface MarketSymbol {
 export interface MarketSymbolsResponse {
   region_id: string;
   symbols: MarketSymbol[];
-}
-
-// === Geospatial Types ===
-
-export interface ProxySignal {
-  name: string;
-  value: number;
-  confidence: number;
-}
-
-export interface PhysicalFusion {
-  fused_signal: number;
-  agreement: number;
-  proxies: ProxySignal[];
-}
-
-export interface SpatialStats {
-  mean_anomaly: number;
-  max_anomaly: number;
-  min_anomaly: number;
-  spatial_variance: number;
-  hotspot_fraction: number;
-}
-
-export interface OverlayLegend {
-  min_val: number;
-  max_val: number;
-  unit: string;
-  description: string;
-}
-
-export interface Overlay {
-  type: string;
-  url: string;
-  bbox: [number, number, number, number];
-  legend: OverlayLegend;
-}
-
-export interface GeospatialData {
-  overlay: Overlay;
-  spatial_stats: SpatialStats;
-  physical_fusion: PhysicalFusion;
-  is_simulated: boolean;
 }

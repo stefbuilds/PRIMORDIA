@@ -3,13 +3,11 @@
 @tailwind utilities;
 
 /* Tech fonts for logo and UI */
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
   --font-logo: 'Chakra Petch', 'Rajdhani', sans-serif;
   --font-tech: 'Space Grotesk', -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
-  --font-wide: 'Chakra Petch', 'Rajdhani', sans-serif;
 }
 
 /* Dark theme (default) */

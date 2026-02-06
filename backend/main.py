@@ -15,7 +15,6 @@ from typing import Optional
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -30,12 +29,11 @@ satellite_service = None
 market_service = None
 sentiment_service = None
 chat_service = None
-geospatial_service = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global news_service, satellite_service, market_service, sentiment_service, chat_service, geospatial_service
+    global news_service, satellite_service, market_service, sentiment_service, chat_service
     
     # Initialize services
     try:
@@ -72,13 +70,6 @@ async def lifespan(app: FastAPI):
         logger.info("Chat service ready")
     except Exception as e:
         logger.error(f"Chat service failed: {e}")
-    
-    try:
-        from services.geospatial import get_geospatial_service
-        geospatial_service = get_geospatial_service()
-        logger.info("Geospatial service ready")
-    except Exception as e:
-        logger.error(f"Geospatial service failed: {e}")
     
     yield
 
@@ -205,49 +196,6 @@ class AIInsightResponse(BaseModel):
     model: str
 
 
-# === Geospatial Models ===
-
-class ProxySignalResponse(BaseModel):
-    name: str
-    value: float
-    confidence: float
-
-
-class PhysicalFusionResponse(BaseModel):
-    fused_signal: float
-    agreement: float
-    proxies: list[ProxySignalResponse]
-
-
-class SpatialStatsResponse(BaseModel):
-    mean_anomaly: float
-    max_anomaly: float
-    min_anomaly: float
-    spatial_variance: float
-    hotspot_fraction: float
-
-
-class OverlayLegendResponse(BaseModel):
-    min_val: float
-    max_val: float
-    unit: str
-    description: str
-
-
-class OverlayResponse(BaseModel):
-    type: str
-    url: str
-    bbox: list[float]
-    legend: OverlayLegendResponse
-
-
-class GeospatialResponse(BaseModel):
-    overlay: OverlayResponse
-    spatial_stats: SpatialStatsResponse
-    physical_fusion: PhysicalFusionResponse
-    is_simulated: bool
-
-
 class SignalsResponse(BaseModel):
     region_id: str
     timestamp: str
@@ -268,9 +216,6 @@ class SignalsResponse(BaseModel):
     
     # AI Analysis
     ai_insight: Optional[AIInsightResponse]
-    
-    # Geospatial Analysis
-    geospatial: Optional[GeospatialResponse]
     
     # Analysis
     alerts: list[AlertResponse]
@@ -504,31 +449,6 @@ def get_market_symbols(region_id: str):
     return {"region_id": region_id, "symbols": symbols}
 
 
-@app.get("/overlays/{region_id}.png")
-def get_overlay_png(region_id: str):
-    """Serve anomaly overlay PNG for a region."""
-    if not geospatial_service:
-        return Response(content=b"", status_code=404)
-    
-    # Ensure we have generated the overlay (triggers analysis if needed)
-    api_base = os.getenv("API_BASE_URL", "http://localhost:8000")
-    geospatial_service.analyze_region(region_id, api_base)
-    
-    # Get cached PNG
-    png_bytes = geospatial_service.get_overlay_png(region_id)
-    if png_bytes is None:
-        return Response(content=b"", status_code=404)
-    
-    return Response(
-        content=png_bytes,
-        media_type="image/png",
-        headers={
-            "Cache-Control": "public, max-age=3600",
-            "Access-Control-Allow-Origin": "*",
-        }
-    )
-
-
 @app.get("/signals", response_model=SignalsResponse)
 def get_signals(region_id: str = Query(...)):
     if region_id not in REGIONS:
@@ -642,47 +562,6 @@ def get_signals(region_id: str = Query(...)):
         if ai_result.model == "gemini":
             data_mode = data_mode + "+AI" if data_mode else "AI"
     
-    # Geospatial Analysis
-    geospatial = None
-    if geospatial_service:
-        api_base = os.getenv("API_BASE_URL", "http://localhost:8000")
-        geo_data = geospatial_service.analyze_region(region_id, api_base)
-        geospatial = GeospatialResponse(
-            overlay=OverlayResponse(
-                type=geo_data.overlay.type,
-                url=geo_data.overlay.url,
-                bbox=geo_data.overlay.bbox,
-                legend=OverlayLegendResponse(
-                    min_val=geo_data.overlay.legend.min_val,
-                    max_val=geo_data.overlay.legend.max_val,
-                    unit=geo_data.overlay.legend.unit,
-                    description=geo_data.overlay.legend.description,
-                ),
-            ),
-            spatial_stats=SpatialStatsResponse(
-                mean_anomaly=round(geo_data.spatial_stats.mean_anomaly, 3),
-                max_anomaly=round(geo_data.spatial_stats.max_anomaly, 3),
-                min_anomaly=round(geo_data.spatial_stats.min_anomaly, 3),
-                spatial_variance=round(geo_data.spatial_stats.spatial_variance, 4),
-                hotspot_fraction=round(geo_data.spatial_stats.hotspot_fraction, 3),
-            ),
-            physical_fusion=PhysicalFusionResponse(
-                fused_signal=geo_data.physical_fusion.fused_signal,
-                agreement=geo_data.physical_fusion.agreement,
-                proxies=[
-                    ProxySignalResponse(
-                        name=p.name,
-                        value=p.value,
-                        confidence=p.confidence,
-                    ) for p in geo_data.physical_fusion.proxies
-                ],
-            ),
-            is_simulated=geo_data.is_simulated,
-        )
-        # Update data mode
-        if not geo_data.is_simulated:
-            data_mode = data_mode + "+GEO" if data_mode else "GEO"
-    
     return SignalsResponse(
         region_id=region_id,
         timestamp=datetime.now().isoformat(),
@@ -695,7 +574,6 @@ def get_signals(region_id: str = Query(...)):
         news_raw=news_raw,
         market_data=market_data,
         ai_insight=ai_insight,
-        geospatial=geospatial,
         alerts=alerts,
         explanation=explanation,
     )

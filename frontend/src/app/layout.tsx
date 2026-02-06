@@ -20,7 +20,10 @@ export const metadata: Metadata = {
     description: "Satellite vs News divergence analysis. See what headlines miss.",
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.ico", type: "image/x-icon" },
+    ],
     apple: "/apple-touch-icon.png",
   },
 };

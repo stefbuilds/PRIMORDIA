@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { Region, SignalsResponse, Headline, MarketSymbol } from '@/types';
 import ChatBox from '@/components/ChatBox';
 import { MarketSymbols, REGION_MARKET_SYMBOLS } from '@/components/MarketSymbols';
@@ -133,7 +134,14 @@ export default function SignalsPage() {
         <div className="flex items-center gap-8">
           {/* Primordia Text Logo */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center">
+            <div className="flex items-center gap-2.5">
+              <Image 
+                src="/logo.png.png" 
+                alt="Primordia Logo" 
+                width={28} 
+                height={28}
+                className="object-contain"
+              />
               <span 
                 className="text-[22px] font-bold"
                 style={{ 

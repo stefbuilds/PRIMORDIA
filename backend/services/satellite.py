@@ -32,11 +32,27 @@ def _init_earth_engine():
         import ee
         _ee = ee
         
-        credentials_file = os.getenv("GEE_SERVICE_ACCOUNT_FILE")
         project_id = os.getenv("GEE_PROJECT_ID")
+        if not project_id:
+            logger.warning("GEE_PROJECT_ID not configured")
+            _ee_available = False
+            return False
         
-        if not credentials_file or not project_id:
-            logger.warning("GEE credentials not configured")
+        # Try env var first (for Render/cloud deployments)
+        credentials_json = os.getenv("GEE_SERVICE_ACCOUNT_JSON")
+        if credentials_json:
+            import json
+            key_data = json.loads(credentials_json)
+            credentials = ee.ServiceAccountCredentials(key_data.get("client_email"), key_data=credentials_json)
+            ee.Initialize(credentials, project=project_id)
+            _ee_available = True
+            logger.info("Earth Engine initialized from env var")
+            return True
+        
+        # Fall back to file (for local development)
+        credentials_file = os.getenv("GEE_SERVICE_ACCOUNT_FILE")
+        if not credentials_file:
+            logger.warning("GEE credentials not configured (no env var or file)")
             _ee_available = False
             return False
         
@@ -47,7 +63,7 @@ def _init_earth_engine():
         credentials = ee.ServiceAccountCredentials(None, key_file=credentials_file)
         ee.Initialize(credentials, project=project_id)
         _ee_available = True
-        logger.info("Earth Engine initialized successfully")
+        logger.info("Earth Engine initialized from file")
         return True
         
     except Exception as e:

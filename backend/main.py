@@ -665,3 +665,92 @@ def chat_endpoint(request: ChatRequest):
     response = chat_service.chat(request.message, context, history)
     
     return ChatResponse(response=response, model="deepseek")
+
+
+# === Waitlist ===
+
+class WaitlistRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+
+class WaitlistResponse(BaseModel):
+    success: bool
+    message: str
+
+@app.post("/waitlist", response_model=WaitlistResponse)
+def join_waitlist(request: WaitlistRequest):
+    """Add email to waitlist and send confirmation."""
+    import re
+    
+    # Validate email
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, request.email):
+        return WaitlistResponse(success=False, message="Invalid email address")
+    
+    resend_key = os.getenv("RESEND_API_KEY")
+    admin_email = os.getenv("ADMIN_EMAIL", "hello@primordialabs.io")
+    
+    if not resend_key:
+        logger.error("RESEND_API_KEY not configured")
+        return WaitlistResponse(success=False, message="Email service not configured")
+    
+    try:
+        import resend
+        resend.api_key = resend_key
+        
+        # Send confirmation to user
+        resend.Emails.send({
+            "from": "Primordia <hello@primordialabs.io>",
+            "to": [request.email],
+            "subject": "You're on the Primordia Beta Waitlist",
+            "html": f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0a0a0a; color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <h1 style="font-size: 28px; font-weight: 600; margin: 0; letter-spacing: -0.5px;">PRIMORDIA</h1>
+                    <p style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin-top: 8px;">Ground Truth Intelligence</p>
+                </div>
+                
+                <div style="background: #111; border: 1px solid #222; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
+                    <h2 style="font-size: 20px; margin: 0 0 16px 0; color: #fff;">You're In.</h2>
+                    <p style="color: #999; line-height: 1.6; margin: 0;">
+                        Thanks for requesting beta access. You're now on the list for early access to Primordia—the intelligence terminal that reveals what headlines miss.
+                    </p>
+                </div>
+                
+                <div style="background: #111; border: 1px solid #222; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+                    <p style="color: #666; font-size: 13px; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">What's Next</p>
+                    <ul style="color: #999; line-height: 1.8; margin: 0; padding-left: 20px;">
+                        <li>We're rolling out access in waves</li>
+                        <li>Early users get lifetime discounts</li>
+                        <li>You'll hear from us soon</li>
+                    </ul>
+                </div>
+                
+                <p style="color: #444; font-size: 12px; text-align: center; margin: 0;">
+                    Satellite data doesn't lie. Neither do we.
+                </p>
+            </div>
+            """
+        })
+        
+        # Notify admin
+        name_str = f" ({request.name})" if request.name else ""
+        resend.Emails.send({
+            "from": "Primordia Waitlist <hello@primordialabs.io>",
+            "to": [admin_email],
+            "subject": f"New Waitlist Signup: {request.email}",
+            "html": f"""
+            <div style="font-family: monospace; padding: 20px;">
+                <h3>New Waitlist Signup</h3>
+                <p><strong>Email:</strong> {request.email}{name_str}</p>
+                <p><strong>Time:</strong> {datetime.now().isoformat()}</p>
+            </div>
+            """
+        })
+        
+        logger.info(f"Waitlist signup: {request.email}")
+        return WaitlistResponse(success=True, message="You're on the list! Check your email.")
+        
+    except Exception as e:
+        logger.error(f"Waitlist error: {e}")
+        return WaitlistResponse(success=False, message="Something went wrong. Try again.")

@@ -2,8 +2,27 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Primordia",
-  description: "Satellite vs News signal divergence analysis",
+  title: "Primordia | Ground Truth Intelligence",
+  description: "Intelligence terminal analyzing satellite imagery, news sentiment, and market data to detect divergence signals before markets react.",
+  keywords: ["satellite data", "market intelligence", "news sentiment", "divergence analysis", "alternative data"],
+  authors: [{ name: "Primordia" }],
+  openGraph: {
+    title: "Primordia | Ground Truth Intelligence",
+    description: "Satellite vs News divergence analysis. See what headlines miss.",
+    url: "https://primordialabs.io",
+    siteName: "Primordia",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Primordia | Ground Truth Intelligence",
+    description: "Satellite vs News divergence analysis. See what headlines miss.",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

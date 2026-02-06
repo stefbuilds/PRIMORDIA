@@ -28,6 +28,13 @@ const levelConfig = {
     icon: "🔵",
     badge: "bg-slate-500/30 text-slate-200",
   },
+  ok: {
+    bg: "bg-emerald-500/15",
+    border: "border-emerald-500/50",
+    text: "text-emerald-300",
+    icon: "🟢",
+    badge: "bg-emerald-500/30 text-emerald-200",
+  },
 };
 
 export default function AlertsList({ alerts }: Props) {
@@ -41,7 +48,7 @@ export default function AlertsList({ alerts }: Props) {
 
   // Sort by severity
   const sortedAlerts = [...alerts].sort((a, b) => {
-    const order = { critical: 0, warning: 1, info: 2 };
+    const order = { critical: 0, warning: 1, info: 2, ok: 3 };
     return order[a.level] - order[b.level];
   });
 

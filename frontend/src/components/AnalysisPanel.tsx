@@ -172,13 +172,13 @@ export default function AnalysisPanel({ signals, region, loading, error }: Props
           </div>
 
           {/* Headlines Preview */}
-          {signals.news_raw.top_headlines.length > 0 && (
+          {signals.news_raw.headlines.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
                 Top Headlines
               </h3>
               <div className="space-y-1.5">
-                {signals.news_raw.top_headlines.slice(0, 3).map((h, i) => (
+                {signals.news_raw.headlines.slice(0, 3).map((h, i) => (
                   <div key={i} className="bg-slate-800/20 rounded p-2 border border-slate-800/50">
                     <p className="text-[11px] text-slate-300 leading-snug line-clamp-2">
                       {h.title}

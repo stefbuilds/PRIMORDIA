@@ -97,10 +97,33 @@ export interface MarketSymbol {
   ticker: string;
   name: string;
   type: 'primary' | 'secondary';
-  description: string;
+  description?: string;
 }
 
 export interface MarketSymbolsResponse {
   region_id: string;
   symbols: MarketSymbol[];
+}
+
+// Alias for backwards compatibility
+export type Signals = SignalsResponse;
+
+export interface DaySnapshot {
+  date: string;
+  satellite_score: number;
+  news_score: number;
+  divergence_score: number;
+}
+
+export interface RegimeInfo {
+  start_date: string;
+  end_date: string;
+  type: string;
+  duration: number;
+}
+
+export interface Regime {
+  type: string;
+  progress: number;
+  intensity: number;
 }

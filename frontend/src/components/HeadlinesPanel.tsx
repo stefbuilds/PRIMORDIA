@@ -47,7 +47,7 @@ export default function HeadlinesPanel({ headlines }: Props) {
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
             <span className="font-medium">{h.source}</span>
             <span>•</span>
-            <span>{h.date}</span>
+            <span>{h.published_at}</span>
           </div>
         </div>
       ))}

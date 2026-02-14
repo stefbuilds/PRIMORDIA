@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import RegisterSW from "@/components/RegisterSW";
 
 export const metadata: Metadata = {
   title: "Primordia | Ground Truth Intelligence",
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -36,6 +38,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
         <link
           href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css"
           rel="stylesheet"
@@ -47,7 +51,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <RegisterSW />
+        {children}
+      </body>
     </html>
   );
 }
